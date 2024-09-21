@@ -126,7 +126,8 @@ For the GPU version supporting Metal (macOS), run:
 CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
-For detailed installation instructions of Nexa SDK for **CUDA** and **AMD GPU** support, please refer to Nexa SDK's Installation section.
+For detailed installation instructions of Nexa SDK for **CUDA** and **AMD GPU** support, please refer to Nexa SDK's Installation section. [Nexa SDK Installation](https://github.com/NexaAI/nexa-sdk?tab=readme-ov-file#installation)
+
 
 ### 4. Install Dependencies
 
