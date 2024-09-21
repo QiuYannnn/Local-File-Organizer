@@ -93,7 +93,7 @@ We hope this tool can help bring some order to your digital life, making file ma
 Clone this repository to your local machine using Git:
 
 ```zsh
-git clone https://github.com/QiuYannnn/nexa_sdk_develop.git
+git clone https://github.com/QiuYannnn/Local-File-Organizer.git
 ```
 
 Or download the repository as a ZIP file and extract it to your desired location.
