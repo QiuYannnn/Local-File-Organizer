@@ -8,8 +8,8 @@ Tired of digital clutter? Overwhelmed by disorganized files scattered across you
 --------------------------------------------------
 Enter the path of the directory you want to organize: /home/user/documents/input_files
 --------------------------------------------------
-Enter the path to store organized files and folders (press Enter to use 'renamed_folder' in the input directory): 
-Output path successfully upload: /home/user/documents/renamed_folder
+Enter the path to store organized files and folders (press Enter to use 'organized_folder' in the input directory)
+Output path successfully upload: /home/user/documents/organzied_folder
 --------------------------------------------------
 Time taken to load file paths: 0.00 seconds
 --------------------------------------------------
@@ -166,12 +166,12 @@ Enter the path of the directory you want to organize: /path/to/your/input_folder
 ```
 
 #### Enter the Output Path
-Next, you will be prompted to enter the path where you want the organized files to be stored. You can either specify a directory or press Enter to use the default directory (renamed_folder) inside the input directory.
+Next, you will be prompted to enter the path where you want the organized files to be stored. You can either specify a directory or press Enter to use the default directory (organzied_folder) inside the input directory.
 
 ```zsh
-Enter the path to store organized files and folders (press Enter to use 'renamed_folder' in the input directory): /path/to/your/output_folder
+Enter the path to store organized files and folders (press Enter to use 'organzied_folder' in the input directory): /path/to/your/output_folder
 ```
-If you press Enter without specifying a path, the script will create a folder named renamed_folder in the input directory to store the organized files.
+If you press Enter without specifying a path, the script will create a folder named organzied_folder in the input directory to store the organized files.
 
 ## Notes
 
