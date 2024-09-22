@@ -1,2 +1,19 @@
-*.log
+# Byte-compiled Python files
 __pycache__/
+*.py[cod]
+*.pyc
+
+# pytest cache directory
+.pytest_cache/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Virtual environment folders
+env/
+venv/
+
+# Ignore log files and temporary files
+*.log
+*.tmp
+*.swp
