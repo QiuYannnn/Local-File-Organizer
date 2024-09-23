@@ -17,3 +17,6 @@ venv/
 *.log
 *.tmp
 *.swp
+
+# Ignore example output files
+organized_folder/
