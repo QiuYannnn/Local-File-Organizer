@@ -7,10 +7,11 @@ from file_utils import (
     separate_files_by_type,
     read_text_file,
     read_pdf_file,
-    read_docx_file  # Importing read_docx_file
+    read_docx_file
 )
 
 from data_processing import (
+    initialize_models,
     process_image_files,
     process_text_files,
     copy_and_rename_files
@@ -19,6 +20,11 @@ from data_processing import (
 def main():
     # Paths configuration
     print("-" * 50)
+    print("Checking if the model is already downloaded. If not, downloading it now.")
+
+    # Initialize models once
+    initialize_models()
+
     input_path = input("Enter the path of the directory you want to organize: ").strip()
     if not os.path.exists(input_path):
         print(f"Input path {input_path} does not exist. Please create it and add the necessary files.")
@@ -38,7 +44,7 @@ def main():
     os.makedirs(output_path, exist_ok=True)
 
     # Confirm successful output path
-    print(f"Output path successfully upload: {output_path}")
+    print(f"Output path successfully uploaded: {output_path}")
     print("-" * 50)
 
     # Start processing files
@@ -52,8 +58,9 @@ def main():
     display_directory_tree(input_path)
 
     print("*" * 50)
-    print("The file upload was successful. It will take some minutes.")
+    print("The file upload was successful. Processing may take a few minutes.")
     print("*" * 50)
+   
 
     # Separate files by type
     image_files, text_files = separate_files_by_type(file_paths)
@@ -90,7 +97,7 @@ def main():
     copy_and_rename_files(data_texts, output_path, renamed_files, processed_files)
 
     print("-" * 50)
-    print(f"the folder content are rename and clean up successfully.")
+    print("The folder contents have been renamed and organized successfully.")
     print("-" * 50)
     print("Directory tree after copying and renaming:")
     display_directory_tree(output_path)

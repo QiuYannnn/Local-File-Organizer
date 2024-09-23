@@ -6,6 +6,11 @@ Tired of digital clutter? Overwhelmed by disorganized files scattered across you
 
 ```
 --------------------------------------------------
+Checking if the model is already downloaded. If not, downloading it now.
+**----------------------------------------------**
+**       Image inference model initialized      **
+**       Text inference model initialized       **
+**----------------------------------------------**
 Enter the path of the directory you want to organize: /home/user/documents/input_files
 --------------------------------------------------
 Enter the path to store organized files and folders (press Enter to use 'organized_folder' in the input directory)

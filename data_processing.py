@@ -1,39 +1,24 @@
 import re
-from multiprocessing import Pool, cpu_count
 from nexa.gguf import NexaVLMInference, NexaTextInference
 from file_utils import sanitize_filename, create_folder
 import os
 import shutil
-import sys
-import contextlib
+from output_filter import filter_specific_output  # Import the context manager
 
 # Global variables to hold the models
 image_inference = None
 text_inference = None
 
-@contextlib.contextmanager
-def suppress_stdout_stderr():
-    """A context manager that redirects stdout and stderr to devnull."""
-    with open(os.devnull, 'w') as devnull:
-        old_stdout = sys.stdout
-        old_stderr = sys.stderr
-        sys.stdout = devnull
-        sys.stderr = devnull
-        try:
-            yield
-        finally:
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-
 def initialize_models():
     """Initialize the models if they haven't been initialized yet."""
     global image_inference, text_inference
     if image_inference is None or text_inference is None:
-        with suppress_stdout_stderr():
-            # Initialize the models
-            model_path = "llava-v1.6-vicuna-7b:q4_0"
-            model_path_text = "gemma-2-2b-instruct:q4_0"
+        # Initialize the models
+        model_path = "llava-v1.6-vicuna-7b:q4_0"
+        model_path_text = "gemma-2-2b-instruct:q4_0"
 
+        # Use the filter_specific_output context manager
+        with filter_specific_output():
             # Initialize the image inference model
             image_inference = NexaVLMInference(
                 model_path=model_path,
@@ -57,7 +42,10 @@ def initialize_models():
                 top_p=0.3,
                 profiling=False
             )
-
+        print("**----------------------------------------------**")
+        print("**       Image inference model initialized      **")
+        print("**       Text inference model initialized       **")
+        print("**----------------------------------------------**")
 def get_text_from_generator(generator):
     """Extract text from the generator response."""
     response_text = ""
@@ -142,9 +130,11 @@ def process_single_image(image_path):
     }
 
 def process_image_files(image_paths):
-    """Process image files using multiprocessing."""
-    with Pool(cpu_count()) as pool:
-        data_list = pool.map(process_single_image, image_paths)
+    """Process image files sequentially."""
+    data_list = []
+    for image_path in image_paths:
+        data = process_single_image(image_path)
+        data_list.append(data)
     return data_list
 
 def summarize_text_content(text):
@@ -230,9 +220,11 @@ def process_single_text_file(args):
     }
 
 def process_text_files(text_tuples):
-    """Process text files using multiprocessing."""
-    with Pool(cpu_count()) as pool:
-        results = pool.map(process_single_text_file, text_tuples)
+    """Process text files sequentially."""
+    results = []
+    for args in text_tuples:
+        data = process_single_text_file(args)
+        results.append(data)
     return results
 
 def copy_and_rename_files(data_list, new_path, renamed_files, processed_files):
@@ -246,7 +238,7 @@ def copy_and_rename_files(data_list, new_path, renamed_files, processed_files):
         # Use folder name which generated from the description
         dir_path = create_folder(new_path, data['foldername'])
 
-        # Use filename which generated from the  description
+        # Use filename which generated from the description
         new_file_name = data['filename'] + os.path.splitext(file_path)[1]
         new_file_path = os.path.join(dir_path, new_file_name)
 
