@@ -193,3 +193,10 @@ If you press Enter without specifying a path, the script will create a folder na
 
 - **Customizing Prompts:**
   - You can adjust prompts in `data_processing.py` to change how metadata is generated.
+
+## License
+
+This project is dual-licensed under the MIT License and Apache 2.0 License. You may choose which license you prefer to use for this project.
+
+- See the [MIT License](LICENSE-MIT) for more details.
+- See the [Apache 2.0 License](LICENSE-Apache-2.0) for more details.
