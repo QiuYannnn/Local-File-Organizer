@@ -181,7 +181,7 @@ If you press Enter without specifying a path, the script will create a folder na
 ## Notes
 
 - **SDK Models:**
-  - The script uses `NexaVLMInference` and `NexaTextInference` models [Usage](https://docs.nexaai.com/sdk/python-interface/gguf).
+  - The script uses `NexaVLMInference` and `NexaTextInference` models [usage](https://docs.nexaai.com/sdk/python-interface/gguf).
   - Ensure you have access to these models and they are correctly set up.
   - You may need to download model files or configure paths.
 
