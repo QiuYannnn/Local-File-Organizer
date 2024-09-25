@@ -127,3 +127,16 @@ def separate_files_by_type(file_paths):
     text_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in text_extensions]
 
     return image_files, text_files  # Return only two values
+
+def check_hard_link_support():
+    """Check if the filesystem supports hard links."""
+    try:
+        test_file = 'test_hardlink.tmp'
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.link(test_file, test_file + '_link')
+        os.unlink(test_file)
+        os.unlink(test_file + '_link')
+        return True
+    except Exception:
+        return False

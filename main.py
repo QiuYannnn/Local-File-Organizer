@@ -7,7 +7,8 @@ from file_utils import (
     separate_files_by_type,
     read_text_file,
     read_pdf_file,
-    read_docx_file
+    read_docx_file,
+    check_hard_link_support
 )
 
 from data_processing import (
@@ -16,6 +17,28 @@ from data_processing import (
     process_text_files,
     copy_and_rename_files
 )
+
+def simulate_directory_tree(operations, base_path):
+    """Simulate the directory tree based on the proposed operations."""
+    tree = {}
+    for op in operations:
+        rel_path = os.path.relpath(op['destination'], base_path)
+        parts = rel_path.split(os.sep)
+        current_level = tree
+        for part in parts:
+            if part not in current_level:
+                current_level[part] = {}
+            current_level = current_level[part]
+    return tree
+
+def print_simulated_tree(tree, prefix=''):
+    """Print the simulated directory tree."""
+    pointers = ['├── '] * (len(tree) - 1) + ['└── '] if tree else []
+    for pointer, key in zip(pointers, tree):
+        print(prefix + pointer + key)
+        if tree[key]:  # If there are subdirectories or files
+            extension = '│   ' if pointer == '├── ' else '    '
+            print_simulated_tree(tree[key], prefix + extension)
 
 def main():
     # Paths configuration
@@ -54,19 +77,26 @@ def main():
 
     print(f"Time taken to load file paths: {end_time - start_time:.2f} seconds")
     print("-" * 50)
-    print("Directory tree before renaming:")
+    print("Directory tree before organizing:")
     display_directory_tree(input_path)
 
     print("*" * 50)
     print("The file upload was successful. Processing may take a few minutes.")
     print("*" * 50)
-   
+
+    # Check for hard link support
+    hard_link_supported = check_hard_link_support()
+    if hard_link_supported:
+        print("Your filesystem supports hard links. The script will use hard links instead of copying files.")
+    else:
+        print("Your filesystem does not support hard links. The script will copy files instead.")
+    print("-" * 50)
+
+    # Always perform a dry run first
+    dry_run = True
 
     # Separate files by type
     image_files, text_files = separate_files_by_type(file_paths)
-
-    # Process image files
-    data_images = process_image_files(image_files)
 
     # Prepare text tuples for processing
     text_tuples = []
@@ -83,24 +113,59 @@ def main():
             continue  # Skip unsupported file formats
         text_tuples.append((fp, text_content))
 
-    # Process text files
+    # Process files sequentially
+    data_images = process_image_files(image_files)
     data_texts = process_text_files(text_tuples)
 
     # Prepare for copying and renaming
     renamed_files = set()
     processed_files = set()
 
-    # Copy and rename image files
-    copy_and_rename_files(data_images, output_path, renamed_files, processed_files)
+    # Combine all data
+    all_data = data_images + data_texts
 
-    # Copy and rename text files
-    copy_and_rename_files(data_texts, output_path, renamed_files, processed_files)
+    # Copy and rename files (perform dry run)
+    operations = copy_and_rename_files(
+        all_data,
+        output_path,
+        renamed_files,
+        processed_files,
+        use_hard_links=hard_link_supported,
+        dry_run=True  # Always perform dry run first
+    )
+
+    # Simulate and display the proposed directory tree
+    print("Proposed directory structure:")
+    simulated_tree = simulate_directory_tree(operations, output_path)
+    print(os.path.abspath(output_path))
+    print_simulated_tree(simulated_tree)
+    print("-" * 50)
+
+    # Ask user if they want to proceed
+    proceed = input("Would you like to proceed with these changes? (yes/no): ").strip().lower()
+    if proceed not in ('yes', 'y'):
+        print("Operation canceled by the user.")
+        return
+
+    # Perform the actual file operations
+    print("Performing file operations...")
+    renamed_files = set()  # Reset renamed files
+    processed_files = set()  # Reset processed files
+
+    copy_and_rename_files(
+        all_data,
+        output_path,
+        renamed_files,
+        processed_files,
+        use_hard_links=hard_link_supported,
+        dry_run=False  # Now perform the operations
+    )
 
     print("-" * 50)
     print("The folder contents have been renamed and organized successfully.")
     print("-" * 50)
-    print("Directory tree after copying and renaming:")
-    display_directory_tree(output_path)
+    print("Directory tree after organizing:")
+    # display_directory_tree(output_path)
 
 if __name__ == '__main__':
     main()
