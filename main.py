@@ -7,15 +7,15 @@ from file_utils import (
     separate_files_by_type,
     read_text_file,
     read_pdf_file,
-    read_docx_file,
-    check_hard_link_support
+    read_docx_file
 )
 
 from data_processing import (
     initialize_models,
     process_image_files,
     process_text_files,
-    copy_and_rename_files
+    compute_operations,
+    execute_operations
 )
 
 def simulate_directory_tree(operations, base_path):
@@ -41,21 +41,38 @@ def print_simulated_tree(tree, prefix=''):
             print_simulated_tree(tree[key], prefix + extension)
 
 def main():
+    # Ask the user if they want to enable silent mode at the beginning
+    silent_mode_input = input("Would you like to enable silent mode? (yes/no): ").strip().lower()
+    silent_mode = silent_mode_input in ('yes', 'y')
+    log_file = 'operation_log.txt' if silent_mode else None
+
     # Paths configuration
-    print("-" * 50)
-    print("Checking if the model is already downloaded. If not, downloading it now.")
+    if not silent_mode:
+        print("-" * 50)
+        print("Checking if the model is already downloaded. If not, downloading it now.")
 
     # Initialize models once
     initialize_models()
 
     input_path = input("Enter the path of the directory you want to organize: ").strip()
     if not os.path.exists(input_path):
-        print(f"Input path {input_path} does not exist. Please create it and add the necessary files.")
+        message = f"Input path {input_path} does not exist. Please create it and add the necessary files."
+        if silent_mode:
+            with open(log_file, 'a') as f:
+                f.write(message + '\n')
+        else:
+            print(message)
         return
 
     # Confirm successful input path
-    print(f"Input path successfully uploaded: {input_path}")
-    print("-" * 50)
+    message = f"Input path successfully uploaded: {input_path}"
+    if silent_mode:
+        with open(log_file, 'a') as f:
+            f.write(message + '\n')
+    else:
+        print(message)
+    if not silent_mode:
+        print("-" * 50)
 
     # Default output path is a folder named "organized_folder" in the same directory as the input path
     output_path = input("Enter the path to store organized files and folders (press Enter to use 'organized_folder' in the input directory): ").strip()
@@ -67,33 +84,37 @@ def main():
     os.makedirs(output_path, exist_ok=True)
 
     # Confirm successful output path
-    print(f"Output path successfully uploaded: {output_path}")
-    print("-" * 50)
+    message = f"Output path successfully uploaded: {output_path}"
+    if silent_mode:
+        with open(log_file, 'a') as f:
+            f.write(message + '\n')
+    else:
+        print(message)
+    if not silent_mode:
+        print("-" * 50)
 
     # Start processing files
     start_time = time.time()
     file_paths = collect_file_paths(input_path)
     end_time = time.time()
 
-    print(f"Time taken to load file paths: {end_time - start_time:.2f} seconds")
-    print("-" * 50)
-    print("Directory tree before organizing:")
-    display_directory_tree(input_path)
-
-    print("*" * 50)
-    print("The file upload was successful. Processing may take a few minutes.")
-    print("*" * 50)
-
-    # Check for hard link support
-    hard_link_supported = check_hard_link_support()
-    if hard_link_supported:
-        print("Your filesystem supports hard links. The script will use hard links instead of copying files.")
+    message = f"Time taken to load file paths: {end_time - start_time:.2f} seconds"
+    if silent_mode:
+        with open(log_file, 'a') as f:
+            f.write(message + '\n')
     else:
-        print("Your filesystem does not support hard links. The script will copy files instead.")
-    print("-" * 50)
+        print(message)
+    if not silent_mode:
+        print("-" * 50)
+        print("Directory tree before organizing:")
+        display_directory_tree(input_path)
 
-    # Always perform a dry run first
-    dry_run = True
+        print("*" * 50)
+        print("The file upload was successful. Processing may take a few minutes.")
+        print("*" * 50)
+
+    # Prepare to collect link type statistics
+    link_type_counts = {'hardlink': 0, 'symlink': 0}
 
     # Separate files by type
     image_files, text_files = separate_files_by_type(file_paths)
@@ -109,13 +130,18 @@ def main():
         elif ext == '.pdf':
             text_content = read_pdf_file(fp)
         else:
-            print(f"Unsupported text file format: {fp}")
+            message = f"Unsupported text file format: {fp}"
+            if silent_mode:
+                with open(log_file, 'a') as f:
+                    f.write(message + '\n')
+            else:
+                print(message)
             continue  # Skip unsupported file formats
         text_tuples.append((fp, text_content))
 
     # Process files sequentially
-    data_images = process_image_files(image_files)
-    data_texts = process_text_files(text_tuples)
+    data_images = process_image_files(image_files, silent=silent_mode, log_file=log_file)
+    data_texts = process_text_files(text_tuples, silent=silent_mode, log_file=log_file)
 
     # Prepare for copying and renaming
     renamed_files = set()
@@ -124,48 +150,71 @@ def main():
     # Combine all data
     all_data = data_images + data_texts
 
-    # Copy and rename files (perform dry run)
-    operations = copy_and_rename_files(
+    # Compute the operations
+    operations = compute_operations(
         all_data,
         output_path,
         renamed_files,
-        processed_files,
-        use_hard_links=hard_link_supported,
-        dry_run=True  # Always perform dry run first
+        processed_files
     )
 
+    # Count link types
+    for op in operations:
+        link_type_counts[op['link_type']] += 1
+
+    # Inform the user about link types being used
+    if not silent_mode:
+        print("-" * 50)
+        print("Link types to be used for organizing files:")
+        print(f"Hardlinks: {link_type_counts['hardlink']}")
+        print(f"Symlinks: {link_type_counts['symlink']}")
+        print("-" * 50)
+
     # Simulate and display the proposed directory tree
-    print("Proposed directory structure:")
-    simulated_tree = simulate_directory_tree(operations, output_path)
-    print(os.path.abspath(output_path))
-    print_simulated_tree(simulated_tree)
-    print("-" * 50)
+    message = "Proposed directory structure:"
+    if silent_mode:
+        with open(log_file, 'a') as f:
+            f.write(message + '\n')
+    else:
+        print(message)
+        print(os.path.abspath(output_path))
+        simulated_tree = simulate_directory_tree(operations, output_path)
+        print_simulated_tree(simulated_tree)
+        print("-" * 50)
 
     # Ask user if they want to proceed
     proceed = input("Would you like to proceed with these changes? (yes/no): ").strip().lower()
     if proceed not in ('yes', 'y'):
-        print("Operation canceled by the user.")
+        message = "Operation canceled by the user."
+        if silent_mode:
+            with open(log_file, 'a') as f:
+                f.write(message + '\n')
+        else:
+            print(message)
         return
 
     # Perform the actual file operations
-    print("Performing file operations...")
-    renamed_files = set()  # Reset renamed files
-    processed_files = set()  # Reset processed files
-
-    copy_and_rename_files(
-        all_data,
-        output_path,
-        renamed_files,
-        processed_files,
-        use_hard_links=hard_link_supported,
-        dry_run=False  # Now perform the operations
+    message = "Performing file operations..."
+    if silent_mode:
+        with open(log_file, 'a') as f:
+            f.write(message + '\n')
+    else:
+        print(message)
+    execute_operations(
+        operations,
+        dry_run=False,
+        silent=silent_mode,
+        log_file=log_file
     )
 
-    print("-" * 50)
-    print("The folder contents have been renamed and organized successfully.")
-    print("-" * 50)
-    print("Directory tree after organizing:")
-    # display_directory_tree(output_path)
+    message = "The files have been organized successfully using the determined link types."
+    if silent_mode:
+        with open(log_file, 'a') as f:
+            f.write("-" * 50 + '\n' + message + '\n' + "-" * 50 + '\n')
+    else:
+        print("-" * 50)
+        print(message)
+        print("-" * 50)
 
 if __name__ == '__main__':
     main()

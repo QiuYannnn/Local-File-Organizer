@@ -2,17 +2,11 @@ import re
 import os
 import shutil
 from nexa.gguf import NexaVLMInference, NexaTextInference
-from file_utils import sanitize_filename, create_folder
+from file_utils import sanitize_filename
 from output_filter import filter_specific_output  # Import the context manager
-# import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.probability import FreqDist
-
-# # Ensure NLTK resources are downloaded
-# nltk.download('punkt', quiet=True)
-# nltk.download('stopwords', quiet=True)
-# nltk.download('punkt_tab')
 
 # Global variables to hold the models
 image_inference = None
@@ -143,7 +137,6 @@ Category:"""
     if not foldername or foldername.lower() in ('untitled', 'unknown', ''):
         # Attempt to extract a keyword from the description
 
-
         words = word_tokenize(description.lower())
         words = [word for word in words if word.isalpha()]
         stop_words = set(stopwords.words('english'))
@@ -162,14 +155,16 @@ Category:"""
 
     return sanitized_foldername, sanitized_filename, description
 
-def process_single_image(image_path):
+def process_single_image(image_path, silent=False, log_file=None):
     """Process a single image file to generate metadata."""
     foldername, filename, description = generate_image_metadata(image_path)
-    print(f"File: {image_path}")
-    print(f"Description: {description}")
-    print(f"Folder name: {foldername}")
-    print(f"Generated filename: {filename}")
-    print("-" * 50)
+    message = f"File: {image_path}\nDescription: {description}\nFolder name: {foldername}\nGenerated filename: {filename}\n" + "-" * 50
+    if silent:
+        if log_file:
+            with open(log_file, 'a') as f:
+                f.write(message + '\n')
+    else:
+        print(message)
     return {
         'file_path': image_path,
         'foldername': foldername,
@@ -177,11 +172,11 @@ def process_single_image(image_path):
         'description': description
     }
 
-def process_image_files(image_paths):
+def process_image_files(image_paths, silent=False, log_file=None):
     """Process image files sequentially."""
     data_list = []
     for image_path in image_paths:
-        data = process_single_image(image_path)
+        data = process_single_image(image_path, silent=silent, log_file=log_file)
         data_list.append(data)
     return data_list
 
@@ -267,10 +262,6 @@ Category:"""
 
     # Check if the AI returned a generic or empty category
     if not foldername or foldername.lower() in ('untitled', 'unknown', ''):
-        # Attempt to extract a keyword from the summary
-        from nltk.tokenize import word_tokenize
-        from nltk.corpus import stopwords
-        from nltk.probability import FreqDist
 
         words = word_tokenize(description.lower())
         words = [word for word in words if word.isalpha()]
@@ -290,15 +281,17 @@ Category:"""
 
     return sanitized_foldername, sanitized_filename, description
 
-def process_single_text_file(args):
+def process_single_text_file(args, silent=False, log_file=None):
     """Process a single text file to generate metadata."""
     file_path, text = args
     foldername, filename, description = generate_text_metadata(text, file_path)
-    print(f"File: {file_path}")
-    print(f"Description: {description}")
-    print(f"Folder name: {foldername}")
-    print(f"Generated filename: {filename}")
-    print("-" * 50)
+    message = f"File: {file_path}\nDescription: {description}\nFolder name: {foldername}\nGenerated filename: {filename}\n" + "-" * 50
+    if silent:
+        if log_file:
+            with open(log_file, 'a') as f:
+                f.write(message + '\n')
+    else:
+        print(message)
     return {
         'file_path': file_path,
         'foldername': foldername,
@@ -306,16 +299,16 @@ def process_single_text_file(args):
         'description': description
     }
 
-def process_text_files(text_tuples):
+def process_text_files(text_tuples, silent=False, log_file=None):
     """Process text files sequentially."""
     results = []
     for args in text_tuples:
-        data = process_single_text_file(args)
+        data = process_single_text_file(args, silent=silent, log_file=log_file)
         results.append(data)
     return results
 
-def copy_and_rename_files(data_list, new_path, renamed_files, processed_files, use_hard_links=False, dry_run=False):
-    """Copy and rename files based on generated metadata."""
+def compute_operations(data_list, new_path, renamed_files, processed_files):
+    """Compute the file operations based on generated metadata."""
     operations = []
     for data in data_list:
         file_path = data['file_path']
@@ -331,36 +324,68 @@ def copy_and_rename_files(data_list, new_path, renamed_files, processed_files, u
         dir_path = os.path.join(new_path, folder_name)
         new_file_path = os.path.join(dir_path, new_file_name)
 
+        # Ensure the directory for the new path exists before proceeding
+        os.makedirs(dir_path, exist_ok=True)
+
         # Handle duplicates
         counter = 1
         original_new_file_name = new_file_name
-        while new_file_path in renamed_files or (not dry_run and os.path.exists(new_file_path)):
+        while new_file_path in renamed_files or os.path.exists(new_file_path):
             new_file_name = f"{data['filename']}_{counter}" + os.path.splitext(file_path)[1]
             new_file_path = os.path.join(dir_path, new_file_name)
             counter += 1
+
+        # Decide whether to use hardlink or symlink
+        if os.path.isdir(file_path):
+            link_type = 'symlink'
+        else:
+            source_dev = os.stat(file_path).st_dev
+            dest_dev = os.stat(os.path.dirname(new_file_path)).st_dev
+            if source_dev == dest_dev:
+                link_type = 'hardlink'
+            else:
+                link_type = 'symlink'
 
         # Record the operation
         operation = {
             'source': file_path,
             'destination': new_file_path,
-            'action': 'copy' if not use_hard_links else 'hardlink'
+            'link_type': link_type,
+            'folder_name': folder_name,
+            'new_file_name': new_file_name
         }
         operations.append(operation)
-
-        if not dry_run:
-            # Create directory
-            dir_path = create_folder(new_path, folder_name)
-            new_file_path = os.path.join(dir_path, new_file_name)
-            # Perform the file operation
-            try:
-                if use_hard_links:
-                    os.link(file_path, new_file_path)
-                else:
-                    shutil.copy2(file_path, new_file_path)
-                renamed_files.add(new_file_path)
-                print(f"{operation['action'].capitalize()}d to: {new_file_path}")
-            except Exception as e:
-                print(f"Error {operation['action']}ing file '{file_path}' to '{new_file_path}': {e}")
-            print("-" * 50)
+        renamed_files.add(new_file_path)
 
     return operations  # Return the list of operations for display or further processing
+
+def execute_operations(operations, dry_run=False, silent=False, log_file=None):
+    """Execute the file operations."""
+    for operation in operations:
+        source = operation['source']
+        destination = operation['destination']
+        link_type = operation['link_type']
+        dir_path = os.path.dirname(destination)
+
+        # Ensure the directory exists before performing the operation
+        os.makedirs(dir_path, exist_ok=True)
+
+        if dry_run:
+            message = f"Dry run: would create {link_type} from '{source}' to '{destination}'"
+        else:
+            try:
+                if link_type == 'hardlink':
+                    os.link(source, destination)
+                else:
+                    os.symlink(source, destination)
+                message = f"Created {link_type} from '{source}' to '{destination}'"
+            except Exception as e:
+                message = f"Error creating {link_type} from '{source}' to '{destination}': {e}"
+
+        # Silent mode handling
+        if silent:
+            if log_file:
+                with open(log_file, 'a') as f:
+                    f.write(message + '\n')
+        else:
+            print(message)
