@@ -41,6 +41,9 @@ def print_simulated_tree(tree, prefix=''):
             print_simulated_tree(tree[key], prefix + extension)
 
 def main():
+    # Start with dry run set to True
+    dry_run = True
+
     # Ask the user if they want to enable silent mode at the beginning
     silent_mode_input = input("Would you like to enable silent mode? (yes/no): ").strip().lower()
     silent_mode = silent_mode_input in ('yes', 'y')
@@ -80,11 +83,11 @@ def main():
         # Get the parent directory of the input path and append 'organized_folder'
         output_path = os.path.join(os.path.dirname(input_path), 'organized_folder')
 
-    # Ensure the output directory exists
-    os.makedirs(output_path, exist_ok=True)
+    # Do not create the output directory yet
+    # os.makedirs(output_path, exist_ok=True)
 
     # Confirm successful output path
-    message = f"Output path successfully uploaded: {output_path}"
+    message = f"Output path successfully set to: {output_path}"
     if silent_mode:
         with open(log_file, 'a') as f:
             f.write(message + '\n')
@@ -193,6 +196,9 @@ def main():
             print(message)
         return
 
+    # Create the output directory now
+    os.makedirs(output_path, exist_ok=True)
+
     # Perform the actual file operations
     message = "Performing file operations..."
     if silent_mode:
@@ -207,7 +213,7 @@ def main():
         log_file=log_file
     )
 
-    message = "The files have been organized successfully using the determined link types."
+    message = "The files have been organized successfully."
     if silent_mode:
         with open(log_file, 'a') as f:
             f.write("-" * 50 + '\n' + message + '\n' + "-" * 50 + '\n')

@@ -324,27 +324,19 @@ def compute_operations(data_list, new_path, renamed_files, processed_files):
         dir_path = os.path.join(new_path, folder_name)
         new_file_path = os.path.join(dir_path, new_file_name)
 
-        # Ensure the directory for the new path exists before proceeding
-        os.makedirs(dir_path, exist_ok=True)
+        # Remove directory creation here
+        # os.makedirs(dir_path, exist_ok=True)
 
         # Handle duplicates
         counter = 1
         original_new_file_name = new_file_name
-        while new_file_path in renamed_files or os.path.exists(new_file_path):
+        while new_file_path in renamed_files:
             new_file_name = f"{data['filename']}_{counter}" + os.path.splitext(file_path)[1]
             new_file_path = os.path.join(dir_path, new_file_name)
             counter += 1
 
         # Decide whether to use hardlink or symlink
-        if os.path.isdir(file_path):
-            link_type = 'symlink'
-        else:
-            source_dev = os.stat(file_path).st_dev
-            dest_dev = os.stat(os.path.dirname(new_file_path)).st_dev
-            if source_dev == dest_dev:
-                link_type = 'hardlink'
-            else:
-                link_type = 'symlink'
+        link_type = 'hardlink'  # Assume hardlink for now
 
         # Record the operation
         operation = {
@@ -367,12 +359,12 @@ def execute_operations(operations, dry_run=False, silent=False, log_file=None):
         link_type = operation['link_type']
         dir_path = os.path.dirname(destination)
 
-        # Ensure the directory exists before performing the operation
-        os.makedirs(dir_path, exist_ok=True)
-
         if dry_run:
             message = f"Dry run: would create {link_type} from '{source}' to '{destination}'"
         else:
+            # Ensure the directory exists before performing the operation
+            os.makedirs(dir_path, exist_ok=True)
+
             try:
                 if link_type == 'hardlink':
                     os.link(source, destination)
