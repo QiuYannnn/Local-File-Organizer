@@ -1,12 +1,14 @@
 import re
 import os
 import shutil
+import time  # Import time to measure processing time
 from nexa.gguf import NexaVLMInference, NexaTextInference
 from file_utils import sanitize_filename
 from output_filter import filter_specific_output  # Import the context manager
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.probability import FreqDist
+from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn, SpinnerColumn
 
 # Global variables to hold the models
 image_inference = None
@@ -65,16 +67,20 @@ def get_text_from_generator(generator):
         pass
     return response_text
 
-def generate_image_metadata(image_path):
+def generate_image_metadata(image_path, progress, task_id):
     """Generate description, folder name, and filename for an image file."""
     initialize_models()
 
-    # Generate description
+    # Total steps in processing an image
+    total_steps = 3
+
+    # Step 1: Generate description
     description_prompt = "Please provide a detailed description of this image, focusing on the main subject and any important details."
     description_generator = image_inference._chat(description_prompt, image_path)
     description = get_text_from_generator(description_generator).strip()
+    progress.update(task_id, advance=1 / total_steps)
 
-    # Generate filename
+    # Step 2: Generate filename
     filename_prompt = f"""Based on the description below, generate a specific and descriptive filename (2-4 words) for the image.
 Do not include any data type words like 'image', 'jpg', 'png', etc. Use only letters and connect words with underscores.
 Avoid using any special characters, symbols, markdown, or code formatting.
@@ -95,6 +101,7 @@ Filename:"""
     # Remove markdown, code blocks, and special characters
     filename = re.sub(r'[\*\`\n]', '', filename)
     filename = filename.strip()
+    progress.update(task_id, advance=1 / total_steps)
 
     # Check if the AI returned a generic or empty filename
     if not filename or filename.lower() in ('untitled', 'unknown', '', 'describes'):
@@ -106,7 +113,7 @@ Filename:"""
     if not sanitized_filename or sanitized_filename.lower() in ('untitled', ''):
         sanitized_filename = 'image_' + os.path.splitext(os.path.basename(image_path))[0]
 
-    # Generate folder name from description
+    # Step 3: Generate folder name from description
     foldername_prompt = f"""Based on the description below, generate a general category or theme (1-2 words) that best represents the main subject of this image.
 This will be used as the folder name. Do not include specific details, words from the filename, any generic terms like 'untitled' or 'unknown', or any special characters, symbols, numbers, markdown, or code formatting.
 
@@ -132,11 +139,11 @@ Category:"""
     # Remove markdown, code blocks, and special characters
     foldername = re.sub(r'[\*\`\n]', '', foldername)
     foldername = foldername.strip()
+    progress.update(task_id, advance=1 / total_steps)
 
     # Check if the AI returned a generic or empty category
     if not foldername or foldername.lower() in ('untitled', 'unknown', ''):
         # Attempt to extract a keyword from the description
-
         words = word_tokenize(description.lower())
         words = [word for word in words if word.isalpha()]
         stop_words = set(stopwords.words('english'))
@@ -157,8 +164,21 @@ Category:"""
 
 def process_single_image(image_path, silent=False, log_file=None):
     """Process a single image file to generate metadata."""
-    foldername, filename, description = generate_image_metadata(image_path)
-    message = f"File: {image_path}\nDescription: {description}\nFolder name: {foldername}\nGenerated filename: {filename}\n" + "-" * 50
+    start_time = time.time()
+
+    # Create a Progress instance for this file
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TimeElapsedColumn()
+    ) as progress:
+        task_id = progress.add_task(f"Processing {os.path.basename(image_path)}", total=1.0)
+        foldername, filename, description = generate_image_metadata(image_path, progress, task_id)
+
+    end_time = time.time()
+    time_taken = end_time - start_time
+
+    message = f"File: {image_path}\nTime taken: {time_taken:.2f} seconds\nDescription: {description}\nFolder name: {foldername}\nGenerated filename: {filename}\n"
     if silent:
         if log_file:
             with open(log_file, 'a') as f:
@@ -195,14 +215,18 @@ Summary:"""
     summary = response['choices'][0]['text'].strip()
     return summary
 
-def generate_text_metadata(input_text, file_path):
+def generate_text_metadata(input_text, file_path, progress, task_id):
     """Generate description, folder name, and filename for a text document."""
     initialize_models()
 
-    # Generate description
-    description = summarize_text_content(input_text)
+    # Total steps in processing a text file
+    total_steps = 3
 
-    # Generate filename
+    # Step 1: Generate description
+    description = summarize_text_content(input_text)
+    progress.update(task_id, advance=1 / total_steps)
+
+    # Step 2: Generate filename
     filename_prompt =  f"""Based on the summary below, generate a specific and descriptive filename (2-4 words) that captures the essence of the document.
 Do not include any data type words like 'text', 'document', 'pdf', etc. Use only letters and connect words with underscores. Avoid generic terms like 'describes'.
 
@@ -225,6 +249,7 @@ Filename:"""
     # Remove markdown, code blocks, and special characters
     filename = re.sub(r'[\*\`\n]', '', filename)
     filename = filename.strip()
+    progress.update(task_id, advance=1 / total_steps)
 
     # Check if the AI returned a generic or empty filename
     if not filename or filename.lower() in ('untitled', 'unknown', '', 'describes'):
@@ -236,7 +261,7 @@ Filename:"""
     if not sanitized_filename or sanitized_filename.lower() in ('untitled', ''):
         sanitized_filename = 'document_' + os.path.splitext(os.path.basename(file_path))[0]
 
-    # Generate folder name from summary
+    # Step 3: Generate folder name from summary
     foldername_prompt = f"""Based on the summary below, generate a general category or theme (1-2 words) that best represents the main subject of this document.
 This will be used as the folder name. Do not include specific details, words from the filename, or any generic terms like 'untitled' or 'unknown'.
 
@@ -259,6 +284,7 @@ Category:"""
     # Remove markdown, code blocks, and special characters
     foldername = re.sub(r'[\*\`\n]', '', foldername)
     foldername = foldername.strip()
+    progress.update(task_id, advance=1 / total_steps)
 
     # Check if the AI returned a generic or empty category
     if not foldername or foldername.lower() in ('untitled', 'unknown', ''):
@@ -284,8 +310,21 @@ Category:"""
 def process_single_text_file(args, silent=False, log_file=None):
     """Process a single text file to generate metadata."""
     file_path, text = args
-    foldername, filename, description = generate_text_metadata(text, file_path)
-    message = f"File: {file_path}\nDescription: {description}\nFolder name: {foldername}\nGenerated filename: {filename}\n" + "-" * 50
+    start_time = time.time()
+
+    # Create a Progress instance for this file
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TimeElapsedColumn()
+    ) as progress:
+        task_id = progress.add_task(f"Processing {os.path.basename(file_path)}", total=1.0)
+        foldername, filename, description = generate_text_metadata(text, file_path, progress, task_id)
+
+    end_time = time.time()
+    time_taken = end_time - start_time
+
+    message = f"File: {file_path}\nTime taken: {time_taken:.2f} seconds\nDescription: {description}\nFolder name: {foldername}\nGenerated filename: {filename}\n"
     if silent:
         if log_file:
             with open(log_file, 'a') as f:
@@ -324,9 +363,6 @@ def compute_operations(data_list, new_path, renamed_files, processed_files):
         dir_path = os.path.join(new_path, folder_name)
         new_file_path = os.path.join(dir_path, new_file_name)
 
-        # Remove directory creation here
-        # os.makedirs(dir_path, exist_ok=True)
-
         # Handle duplicates
         counter = 1
         original_new_file_name = new_file_name
@@ -353,31 +389,42 @@ def compute_operations(data_list, new_path, renamed_files, processed_files):
 
 def execute_operations(operations, dry_run=False, silent=False, log_file=None):
     """Execute the file operations."""
-    for operation in operations:
-        source = operation['source']
-        destination = operation['destination']
-        link_type = operation['link_type']
-        dir_path = os.path.dirname(destination)
+    total_operations = len(operations)
 
-        if dry_run:
-            message = f"Dry run: would create {link_type} from '{source}' to '{destination}'"
-        else:
-            # Ensure the directory exists before performing the operation
-            os.makedirs(dir_path, exist_ok=True)
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TimeElapsedColumn(),
+        transient=True
+    ) as progress:
+        task = progress.add_task("Organizing Files...", total=total_operations)
+        for operation in operations:
+            source = operation['source']
+            destination = operation['destination']
+            link_type = operation['link_type']
+            dir_path = os.path.dirname(destination)
 
-            try:
-                if link_type == 'hardlink':
-                    os.link(source, destination)
-                else:
-                    os.symlink(source, destination)
-                message = f"Created {link_type} from '{source}' to '{destination}'"
-            except Exception as e:
-                message = f"Error creating {link_type} from '{source}' to '{destination}': {e}"
+            if dry_run:
+                message = f"Dry run: would create {link_type} from '{source}' to '{destination}'"
+            else:
+                # Ensure the directory exists before performing the operation
+                os.makedirs(dir_path, exist_ok=True)
 
-        # Silent mode handling
-        if silent:
-            if log_file:
-                with open(log_file, 'a') as f:
-                    f.write(message + '\n')
-        else:
-            print(message)
+                try:
+                    if link_type == 'hardlink':
+                        os.link(source, destination)
+                    else:
+                        os.symlink(source, destination)
+                    message = f"Created {link_type} from '{source}' to '{destination}'"
+                except Exception as e:
+                    message = f"Error creating {link_type} from '{source}' to '{destination}': {e}"
+
+            progress.advance(task)
+
+            # Silent mode handling
+            if silent:
+                if log_file:
+                    with open(log_file, 'a') as f:
+                        f.write(message + '\n')
+            else:
+                print(message)
