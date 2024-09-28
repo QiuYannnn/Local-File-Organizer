@@ -5,18 +5,68 @@ from file_utils import (
     display_directory_tree,
     collect_file_paths,
     separate_files_by_type,
-    read_text_file,
-    read_pdf_file,
-    read_docx_file
+    read_file_data  # Import read_file_data
 )
 
-from data_processing import (
-    initialize_models,
-    process_image_files,
-    process_text_files,
+from data_processing_common import (
     compute_operations,
-    execute_operations
+    execute_operations,
+    process_files_by_date,
+    process_files_by_type,
 )
+
+from text_data_processing import (
+    process_text_files
+)
+
+from image_data_processing import (
+    process_image_files
+)
+
+from output_filter import filter_specific_output  # Import the context manager
+from nexa.gguf import NexaVLMInference, NexaTextInference  # Import model classes
+
+# Initialize models
+image_inference = None
+text_inference = None
+
+def initialize_models():
+    """Initialize the models if they haven't been initialized yet."""
+    global image_inference, text_inference
+    if image_inference is None or text_inference is None:
+        # Initialize the models
+        model_path = "llava-v1.6-vicuna-7b:q4_0"
+        model_path_text = "gemma-2-2b-instruct:q4_0"
+
+        # Use the filter_specific_output context manager
+        with filter_specific_output():
+            # Initialize the image inference model
+            image_inference = NexaVLMInference(
+                model_path=model_path,
+                local_path=None,
+                stop_words=[],
+                temperature=0.3,
+                max_new_tokens=3000, 
+                top_k=3,
+                top_p=0.2,
+                profiling=False
+            )
+
+            # Initialize the text inference model
+            text_inference = NexaTextInference(
+                model_path=model_path_text,
+                local_path=None,
+                stop_words=[],
+                temperature=0.5,
+                max_new_tokens=3000,  # Adjust as needed
+                top_k=3,
+                top_p=0.3,
+                profiling=False
+            )
+        print("**----------------------------------------------**")
+        print("**       Image inference model initialized      **")
+        print("**       Text inference model initialized       **")
+        print("**----------------------------------------------**")
 
 def simulate_directory_tree(operations, base_path):
     """Simulate the directory tree based on the proposed operations."""
@@ -52,10 +102,6 @@ def main():
     # Paths configuration
     if not silent_mode:
         print("-" * 50)
-        print("Checking if the model is already downloaded. If not, downloading it now.")
-
-    # Initialize models once
-    initialize_models()
 
     input_path = input("Enter the path of the directory you want to organize: ").strip()
     if not os.path.exists(input_path):
@@ -113,65 +159,88 @@ def main():
         display_directory_tree(input_path)
 
         print("*" * 50)
-        print("The file upload was successful. Processing may take a few minutes.")
-        print("*" * 50)
 
-    # Prepare to collect link type statistics
-    link_type_counts = {'hardlink': 0, 'symlink': 0}
+    # Ask the user to choose the mode
+    print("Please choose the mode to organize your files:")
+    print("1. By Content")
+    print("2. By Date")
+    print("3. By Type")
+    mode_input = input("Enter 1, 2, or 3: ").strip()
 
-    # Separate files by type
-    image_files, text_files = separate_files_by_type(file_paths)
+    if mode_input == '1':
+        mode = 'content'
+    elif mode_input == '2':
+        mode = 'date'
+    elif mode_input == '3':
+        mode = 'type'
+    else:
+        print("Invalid selection. Defaulting to Content mode.")
+        mode = 'content'
 
-    # Prepare text tuples for processing
-    text_tuples = []
-    for fp in text_files:
-        ext = os.path.splitext(fp.lower())[1]
-        if ext == '.txt':
-            text_content = read_text_file(fp)
-        elif ext == '.docx':
-            text_content = read_docx_file(fp)
-        elif ext == '.pdf':
-            text_content = read_pdf_file(fp)
-        else:
-            message = f"Unsupported text file format: {fp}"
-            if silent_mode:
-                with open(log_file, 'a') as f:
-                    f.write(message + '\n')
-            else:
-                print(message)
-            continue  # Skip unsupported file formats
-        text_tuples.append((fp, text_content))
 
-    # Process files sequentially
-    data_images = process_image_files(image_files, silent=silent_mode, log_file=log_file)
-    data_texts = process_text_files(text_tuples, silent=silent_mode, log_file=log_file)
 
-    # Prepare for copying and renaming
-    renamed_files = set()
-    processed_files = set()
+    if mode == 'content':
+        # Proceed with content mode
+        # Initialize models once
+        if not silent_mode:
+            print("Checking if the model is already downloaded. If not, downloading it now.")
+        initialize_models()
 
-    # Combine all data
-    all_data = data_images + data_texts
+        if not silent_mode:
+            print("*" * 50)
+            print("The file upload was successful. Processing may take a few minutes.")
+            print("*" * 50)
 
-    # Compute the operations
-    operations = compute_operations(
-        all_data,
-        output_path,
-        renamed_files,
-        processed_files
-    )
+        # Prepare to collect link type statistics
+        link_type_counts = {'hardlink': 0, 'symlink': 0}
 
-    # Count link types
-    for op in operations:
-        link_type_counts[op['link_type']] += 1
+        # Separate files by type
+        image_files, text_files = separate_files_by_type(file_paths)
 
-    # Inform the user about link types being used
-    if not silent_mode:
-        print("-" * 50)
-        print("Link types to be used for organizing files:")
-        print(f"Hardlinks: {link_type_counts['hardlink']}")
-        print(f"Symlinks: {link_type_counts['symlink']}")
-        print("-" * 50)
+        # Prepare text tuples for processing
+        text_tuples = []
+        for fp in text_files:
+            # Use read_file_data to read the file content
+            text_content = read_file_data(fp)
+            if text_content is None:
+                message = f"Unsupported or unreadable text file format: {fp}"
+                if silent_mode:
+                    with open(log_file, 'a') as f:
+                        f.write(message + '\n')
+                else:
+                    print(message)
+                continue  # Skip unsupported or unreadable files
+            text_tuples.append((fp, text_content))
+
+        # Process files sequentially
+        data_images = process_image_files(image_files, image_inference, text_inference, silent=silent_mode, log_file=log_file)
+        data_texts = process_text_files(text_tuples, text_inference, silent=silent_mode, log_file=log_file)
+
+
+        # Prepare for copying and renaming
+        renamed_files = set()
+        processed_files = set()
+
+        # Combine all data
+        all_data = data_images + data_texts
+
+        # Compute the operations
+        operations = compute_operations(
+            all_data,
+            output_path,
+            renamed_files,
+            processed_files
+        )
+
+    elif mode == 'date':
+        # Process files by date
+        operations = process_files_by_date(file_paths, output_path, dry_run=False, silent=silent_mode, log_file=log_file)
+    elif mode == 'type':
+        # Process files by type
+        operations = process_files_by_type(file_paths, output_path, dry_run=False, silent=silent_mode, log_file=log_file)
+    else:
+        print("Invalid mode selected.")
+        return
 
     # Simulate and display the proposed directory tree
     message = "Proposed directory structure:"
