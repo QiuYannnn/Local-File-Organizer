@@ -2,3 +2,4 @@ cmake
 pytesseract
 PyMuPDF
 python-docx
+prompt_toolkit
