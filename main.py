@@ -1,21 +1,23 @@
 import os
 import time
 
-from file_utils import (
-    display_directory_tree,
-    collect_file_paths,
-    separate_files_by_type,
-    read_text_file,
-    read_pdf_file,
-    read_docx_file
-)
+from prompt_toolkit import prompt
 
 from data_processing import (
+    copy_and_rename_files,
     initialize_models,
     process_image_files,
     process_text_files,
-    copy_and_rename_files
 )
+from file_utils import (
+    collect_file_paths,
+    display_directory_tree,
+    read_docx_file,
+    read_pdf_file,
+    read_text_file,
+    separate_files_by_type,
+)
+
 
 def main():
     # Paths configuration
@@ -25,9 +27,11 @@ def main():
     # Initialize models once
     initialize_models()
 
-    input_path = input("Enter the path of the directory you want to organize: ").strip()
+    input_path = prompt("Enter the path of the directory you want to organize: ")
     if not os.path.exists(input_path):
-        print(f"Input path {input_path} does not exist. Please create it and add the necessary files.")
+        print(
+            f"Input path {input_path} does not exist. Please create it and add the necessary files."
+        )
         return
 
     # Confirm successful input path
@@ -35,10 +39,12 @@ def main():
     print("-" * 50)
 
     # Default output path is a folder named "organized_folder" in the same directory as the input path
-    output_path = input("Enter the path to store organized files and folders (press Enter to use 'organized_folder' in the input directory): ").strip()
+    output_path = input(
+        "Enter the path to store organized files and folders (press Enter to use 'organized_folder' in the input directory): "
+    ).strip()
     if not output_path:
         # Get the parent directory of the input path and append 'organized_folder'
-        output_path = os.path.join(os.path.dirname(input_path), 'organized_folder')
+        output_path = os.path.join(os.path.dirname(input_path), "organized_folder")
 
     # Ensure the output directory exists
     os.makedirs(output_path, exist_ok=True)
@@ -60,7 +66,6 @@ def main():
     print("*" * 50)
     print("The file upload was successful. Processing may take a few minutes.")
     print("*" * 50)
-   
 
     # Separate files by type
     image_files, text_files = separate_files_by_type(file_paths)
@@ -72,11 +77,11 @@ def main():
     text_tuples = []
     for fp in text_files:
         ext = os.path.splitext(fp.lower())[1]
-        if ext == '.txt':
+        if ext == ".txt":
             text_content = read_text_file(fp)
-        elif ext == '.docx':
+        elif ext == ".docx":
             text_content = read_docx_file(fp)
-        elif ext == '.pdf':
+        elif ext == ".pdf":
             text_content = read_pdf_file(fp)
         else:
             print(f"Unsupported text file format: {fp}")
@@ -102,5 +107,6 @@ def main():
     print("Directory tree after copying and renaming:")
     display_directory_tree(output_path)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
