@@ -1,0 +1,63 @@
+image_prompts:
+  description_prompt: "Please provide a detailed description of this image, focusing on the main subject and any important details."
+  filename_prompt: |
+    Based on the description below, generate a specific and descriptive filename (2-4 words) for the image.
+    Do not include any data type words like 'image', 'jpg', 'png', etc. Use only letters and connect words with underscores.
+
+    Description: {{ description }}
+
+    Example:
+    Description: A photo of a sunset over the mountains.
+    Filename: sunset_over_mountains
+
+    Now generate the filename.
+
+    Filename:
+  foldername_prompt: |
+    Based on the description below, generate a general category or theme (1-2 words) for this image.
+    This will be used as the folder name. Do not include specific details or words from the filename.
+
+    Description: {{ description }}
+
+    Example:
+    Description: A photo of a sunset over the mountains.
+    Category: landscapes
+
+    Now generate the category.
+
+    Category:
+
+text_prompts:
+  summary_prompt: |
+    Provide a concise and accurate summary of the following text, focusing on the main ideas and key details.
+    Limit your summary to a maximum of 150 words.
+
+    Text: {{ text }}
+
+    Summary:
+  filename_prompt: |
+    Based on the summary below, generate a specific and descriptive filename (2-4 words) for the document.
+    Do not include any data type words like 'text', 'document', 'pdf', etc. Use only letters and connect words with underscores.
+
+    Summary: {{ summary }}
+
+    Example:
+    Summary: A research paper on the fundamentals of string theory.
+    Filename: string_theory_fundamentals
+
+    Now generate the filename.
+
+    Filename:
+  foldername_prompt: |
+    Based on the summary below, generate a general category or theme (1-2 words) for this document.
+    This will be used as the folder name. Do not include specific details or words from the filename.
+
+    Summary: {{ summary }}
+
+    Example:
+    Summary: A research paper on the fundamentals of string theory.
+    Category: physics
+
+    Now generate the category.
+
+    Category:
