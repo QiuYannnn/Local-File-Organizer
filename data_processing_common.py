@@ -9,7 +9,7 @@ def sanitize_filename(name, max_length=50, max_words=5):
     name = os.path.splitext(name)[0]
     # Remove unwanted words and data type words
     name = re.sub(
-        r'\b(jpg|jpeg|png|gif|bmp|txt|pdf|docx|xls|xlsx|image|picture|photo|this|that|these|those|here|there|'
+        r'\b(jpg|jpeg|png|gif|bmp|txt|md|pdf|docx|xls|xlsx|csv|ppt|pptx|image|picture|photo|this|that|these|those|here|there|'
         r'please|note|additional|notes|folder|name|sure|heres|a|an|the|and|of|in|'
         r'to|for|on|with|your|answer|should|be|only|summary|summarize|text|category)\b',
         '',

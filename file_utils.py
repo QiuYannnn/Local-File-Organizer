@@ -75,7 +75,7 @@ def read_ppt_file(file_path):
 def read_file_data(file_path):
     """Read content from a file based on its extension."""
     ext = os.path.splitext(file_path.lower())[1]
-    if ext in ['.txt', '.md', '.epub', '.mobi', '.azw', '.azw3']:
+    if ext in ['.txt', '.md']:
         return read_text_file(file_path)
     elif ext in ['.docx', '.doc']:
         return read_docx_file(file_path)
@@ -120,9 +120,10 @@ def collect_file_paths(base_path):
 def separate_files_by_type(file_paths):
     """Separate files into images and text files based on their extensions."""
     image_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')
-    text_extensions = ('.txt', '.docx', '.doc', '.pdf', '.md', '.epub', '.mobi', '.azw', '.azw3', '.xls', '.xlsx', '.ppt', '.pptx', '.csv')
-
+    text_extensions = ('.txt', '.docx', '.doc', '.pdf', '.md', '.epub', '.xls', '.xlsx', '.ppt', '.pptx', '.csv')
     image_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in image_extensions]
     text_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in text_extensions]
 
     return image_files, text_files  # Return only two values
+
+# TODO:ebook: '.mobi', '.azw', '.azw3', '.epub',
