@@ -5,7 +5,8 @@ from PIL import Image
 import pytesseract
 import fitz  # PyMuPDF
 import docx
-import pandas as pd  # Import pandas to read Excel files
+import pandas as pd  # Import pandas to read Excel and CSV files
+from pptx import Presentation  # Import Presentation for PPT files
 
 def read_text_file(file_path):
     """Read text content from a text file."""
@@ -19,7 +20,7 @@ def read_text_file(file_path):
         return None
 
 def read_docx_file(file_path):
-    """Read text content from a .docx file."""
+    """Read text content from a .docx or .doc file."""
     try:
         doc = docx.Document(file_path)
         full_text = [para.text for para in doc.paragraphs]
@@ -44,14 +45,31 @@ def read_pdf_file(file_path):
         print(f"Error reading PDF file {file_path}: {e}")
         return None
 
-def read_excel_file(file_path):
-    """Read text content from an Excel file."""
+def read_spreadsheet_file(file_path):
+    """Read text content from an Excel or CSV file."""
     try:
-        df = pd.read_excel(file_path)
+        if file_path.lower().endswith('.csv'):
+            df = pd.read_csv(file_path)
+        else:
+            df = pd.read_excel(file_path)
         text = df.to_string()
         return text
     except Exception as e:
-        print(f"Error reading Excel file {file_path}: {e}")
+        print(f"Error reading spreadsheet file {file_path}: {e}")
+        return None
+
+def read_ppt_file(file_path):
+    """Read text content from a PowerPoint file."""
+    try:
+        prs = Presentation(file_path)
+        full_text = []
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):
+                    full_text.append(shape.text)
+        return '\n'.join(full_text)
+    except Exception as e:
+        print(f"Error reading PowerPoint file {file_path}: {e}")
         return None
 
 def read_file_data(file_path):
@@ -59,12 +77,14 @@ def read_file_data(file_path):
     ext = os.path.splitext(file_path.lower())[1]
     if ext in ['.txt', '.md', '.epub', '.mobi', '.azw', '.azw3']:
         return read_text_file(file_path)
-    elif ext == '.docx':
+    elif ext in ['.docx', '.doc']:
         return read_docx_file(file_path)
     elif ext == '.pdf':
         return read_pdf_file(file_path)
-    elif ext in ['.xls', '.xlsx']:
-        return read_excel_file(file_path)
+    elif ext in ['.xls', '.xlsx', '.csv']:
+        return read_spreadsheet_file(file_path)
+    elif ext in ['.ppt', '.pptx']:
+        return read_ppt_file(file_path)
     else:
         return None  # Unsupported file type
 
@@ -97,11 +117,10 @@ def collect_file_paths(base_path):
                     file_paths.append(os.path.join(root, file))
         return file_paths
 
-
 def separate_files_by_type(file_paths):
     """Separate files into images and text files based on their extensions."""
     image_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')
-    text_extensions = ('.txt', '.docx', '.pdf', '.md', '.epub', '.mobi', '.azw', '.azw3', '.xls', '.xlsx')  # Added Excel extensions
+    text_extensions = ('.txt', '.docx', '.doc', '.pdf', '.md', '.epub', '.mobi', '.azw', '.azw3', '.xls', '.xlsx', '.ppt', '.pptx', '.csv')
 
     image_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in image_extensions]
     text_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in text_extensions]
