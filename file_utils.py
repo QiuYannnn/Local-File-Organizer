@@ -120,7 +120,7 @@ def collect_file_paths(base_path):
 def separate_files_by_type(file_paths):
     """Separate files into images and text files based on their extensions."""
     image_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')
-    text_extensions = ('.txt', '.docx', '.doc', '.pdf', '.md', '.epub', '.xls', '.xlsx', '.ppt', '.pptx', '.csv')
+    text_extensions = ('.txt', '.docx', '.doc', '.pdf', '.md', '.xls', '.xlsx', '.ppt', '.pptx', '.csv')
     image_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in image_extensions]
     text_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in text_extensions]
 

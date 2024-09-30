@@ -26,6 +26,13 @@ from image_data_processing import (
 from output_filter import filter_specific_output  # Import the context manager
 from nexa.gguf import NexaVLMInference, NexaTextInference  # Import model classes
 
+def ensure_nltk_data():
+    """Ensure that NLTK data is downloaded efficiently and quietly."""
+    import nltk
+    nltk.download('stopwords', quiet=True)
+    nltk.download('punkt', quiet=True)
+    nltk.download('wordnet', quiet=True)
+
 # Initialize models
 image_inference = None
 text_inference = None
@@ -36,7 +43,7 @@ def initialize_models():
     if image_inference is None or text_inference is None:
         # Initialize the models
         model_path = "llava-v1.6-vicuna-7b:q4_0"
-        model_path_text = "gemma-2-2b-instruct:q4_0"
+        model_path_text = "Llama3.2-1B-Instruct:q4_K_M"
 
         # Use the filter_specific_output context manager
         with filter_specific_output():
@@ -125,10 +132,14 @@ def get_mode_selection():
             print("Invalid selection. Please enter 1, 2, or 3. To exit, type '/exit'.")
 
 def main():
+    # Ensure NLTK data is downloaded efficiently and quietly
+    ensure_nltk_data()
+
     # Start with dry run set to True
     dry_run = True
 
     # Display silent mode explanation before asking
+    print("-" * 50)
     print("**NOTE: Silent mode suppresses output messages and logs them to a file instead.")
     silent_mode = get_yes_no("Would you like to enable silent mode? (yes/no): ")
     if silent_mode:
@@ -263,6 +274,7 @@ def main():
                 return
 
             # Simulate and display the proposed directory tree
+            print("-" * 50)
             message = "Proposed directory structure:"
             if silent_mode:
                 with open(log_file, 'a') as f:

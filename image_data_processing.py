@@ -4,6 +4,7 @@ import time
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.probability import FreqDist
+from nltk.stem import WordNetLemmatizer
 from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
 from data_processing_common import sanitize_filename  # Import sanitize_filename
 
@@ -73,8 +74,9 @@ def generate_image_metadata(image_path, progress, task_id, image_inference, text
     progress.update(task_id, advance=1 / total_steps)
 
     # Step 2: Generate filename using text_inference
-    filename_prompt = f"""Based on the description below, generate a specific and descriptive filename (2-4 words) for the image.
-Do not include any data type words like 'image', 'jpg', 'png', etc. Use only letters and connect words with underscores.
+    filename_prompt = f"""Based on the description below, generate a specific and descriptive filename for the image.
+Limit the filename to a maximum of 3 words. Do not include any data type words like 'image', 'jpg', 'png', etc.
+Use only letters and connect words with underscores.
 Avoid using any special characters, symbols, markdown, or code formatting.
 
 Description: {description}
@@ -85,15 +87,19 @@ Filename: sunset_over_mountains
 
 Now generate the filename.
 
+Output only the filename, without any additional text.
+
 Filename:"""
     filename_response = text_inference.create_completion(filename_prompt)
     filename = filename_response['choices'][0]['text'].strip()
-    filename = filename.replace('Filename:', '').strip()
+    # Remove 'Filename:' prefix if present
+    filename = re.sub(r'^Filename:\s*', '', filename, flags=re.IGNORECASE).strip()
     progress.update(task_id, advance=1 / total_steps)
 
     # Step 3: Generate folder name from description using text_inference
-    foldername_prompt = f"""Based on the description below, generate a general category or theme (1-2 words) that best represents the main subject of this image.
-This will be used as the folder name. Do not include specific details, words from the filename, any generic terms like 'untitled' or 'unknown', or any special characters, symbols, numbers, markdown, or code formatting.
+    foldername_prompt = f"""Based on the description below, generate a general category or theme that best represents the main subject of this image.
+This will be used as the folder name. Limit the category to a maximum of 2 words.
+Do not include specific details, words from the filename, any generic terms like 'untitled' or 'unknown', or any special characters, symbols, numbers, markdown, or code formatting.
 
 Description: {description}
 
@@ -109,43 +115,69 @@ Examples:
 
 Now generate the category.
 
+Output only the category, without any additional text.
+
 Category:"""
     foldername_response = text_inference.create_completion(foldername_prompt)
     foldername = foldername_response['choices'][0]['text'].strip()
-    foldername = foldername.replace('Category:', '').strip()
+    # Remove 'Category:' prefix if present
+    foldername = re.sub(r'^Category:\s*', '', foldername, flags=re.IGNORECASE).strip()
     progress.update(task_id, advance=1 / total_steps)
 
-    # Remove markdown, code blocks, and special characters from filename and foldername
-    filename = re.sub(r'[\*\`\n]', '', filename).strip()
-    foldername = re.sub(r'[\*\`\n]', '', foldername).strip()
+    # Remove any unwanted words and stopwords
+    unwanted_words = set([
+        'the', 'and', 'based', 'generated', 'this', 'is', 'filename', 'file', 'image', 'picture', 'photo',
+        'folder', 'category', 'output', 'only', 'below', 'text', 'jpg', 'png', 'jpeg', 'gif', 'bmp', 'svg',
+        'logo', 'in', 'on', 'of', 'with', 'by', 'for', 'to', 'from', 'a', 'an', 'as', 'at', 'red', 'blue',
+        'green', 'color', 'colors', 'colored', 'text', 'graphic', 'graphics', 'main', 'subject', 'important',
+        'details', 'description'
+    ])
+    stop_words = set(stopwords.words('english'))
+    all_unwanted_words = unwanted_words.union(stop_words)
+    lemmatizer = WordNetLemmatizer()
 
-    # Check if the AI returned a generic or empty filename
-    if not filename or filename.lower() in ('untitled', 'unknown', '', 'describes'):
-        # Use the first few words of the description as the filename
-        filename = '_'.join(description.split()[:3])
+    # Function to clean and process the AI output
+    def clean_ai_output(text, max_words):
+        # Remove file extensions and special characters
+        text = re.sub(r'\.\w{1,4}$', '', text)  # Remove file extensions like .jpg, .png
+        text = re.sub(r'[^\w\s]', ' ', text)  # Remove special characters
+        text = re.sub(r'\d+', '', text)  # Remove digits
+        text = text.strip()
+        # Split concatenated words (e.g., 'GoogleChrome' -> 'Google Chrome')
+        text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+        # Tokenize and lemmatize words
+        words = word_tokenize(text)
+        words = [word.lower() for word in words if word.isalpha()]
+        words = [lemmatizer.lemmatize(word) for word in words]
+        # Remove unwanted words and duplicates
+        filtered_words = []
+        seen = set()
+        for word in words:
+            if word not in all_unwanted_words and word not in seen:
+                filtered_words.append(word)
+                seen.add(word)
+        # Limit to max words
+        filtered_words = filtered_words[:max_words]
+        return '_'.join(filtered_words)
 
-    sanitized_filename = sanitize_filename(filename)
+    # Process filename
+    filename = clean_ai_output(filename, max_words=3)
+    if not filename or filename.lower() in ('untitled', ''):
+        # Use keywords from the description
+        filename = clean_ai_output(description, max_words=3)
+    if not filename:
+        filename = 'image_' + os.path.splitext(os.path.basename(image_path))[0]
 
-    if not sanitized_filename or sanitized_filename.lower() in ('untitled', ''):
-        sanitized_filename = 'image_' + os.path.splitext(os.path.basename(image_path))[0]
+    sanitized_filename = sanitize_filename(filename, max_words=3)
 
-    # Check if the AI returned a generic or empty category
-    if not foldername or foldername.lower() in ('untitled', 'unknown', ''):
-        # Attempt to extract a keyword from the description
-        words = word_tokenize(description.lower())
-        words = [word for word in words if word.isalpha()]
-        stop_words = set(stopwords.words('english'))
-        filtered_words = [word for word in words if word not in stop_words]
-        fdist = FreqDist(filtered_words)
-        most_common = fdist.most_common(1)
-        if most_common:
-            foldername = most_common[0][0]
-        else:
+    # Process foldername
+    foldername = clean_ai_output(foldername, max_words=2)
+    if not foldername or foldername.lower() in ('untitled', ''):
+        # Attempt to extract keywords from the description
+        foldername = clean_ai_output(description, max_words=2)
+        if not foldername:
             foldername = 'images'
 
-    sanitized_foldername = sanitize_filename(foldername)
-
-    if not sanitized_foldername:
-        sanitized_foldername = 'images'
+    sanitized_foldername = sanitize_filename(foldername, max_words=2)
 
     return sanitized_foldername, sanitized_filename, description
