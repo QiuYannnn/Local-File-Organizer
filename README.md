@@ -55,7 +55,7 @@ After:
 * Featured by [Nexa Gallery](https://nexaai.com/gallery) and [Nexa SDK Cookbook](https://github.com/NexaAI/nexa-sdk/tree/main/examples)!
 * Dry Run Mode: check sorting results before committing changes
 * Silent Mode: save all logs to a txt file for quieter operation
-* Added file support:  `.md`, .`excel`, `.ppt`, and `.csv` 
+* Added file support:  `.md`, .`excel`, `.ppt`, and `.csv`
 * Three sorting options: by content, by date, and by type
 * The default text model is now [Llama3.2 3B](https://nexaai.com/meta/Llama3.2-3B-Instruct/gguf-q3_K_M/file)
 * Improved CLI interaction experience
@@ -66,14 +66,14 @@ Please update the project by deleting the original project folder and reinstalli
 
 ## Roadmap 📅
 
+- [x] Dockerfile for easier installation
 - [ ] Copilot Mode: chat with AI to tell AI how you want to sort the file (ie. read and rename all the PDFs)
-- [ ] Change models with CLI 
+- [ ] Change models with CLI
 - [ ] ebook format support
 - [ ] audio file support
 - [ ] video file support
 - [ ] Implement best practices like Johnny Decimal
 - [ ] Check file duplication
-- [ ] Dockerfile for easier installation
 - [ ] People from [Nexa](https://github.com/NexaAI/nexa-sdk) is helping me to make executables for macOS, Linux and Windows
 
 ## What It Does 🔍
@@ -82,7 +82,7 @@ This intelligent file organizer harnesses the power of advanced AI models, inclu
 
 
 * Scanning a specified input directory for files.
-* Content Understanding: 
+* Content Understanding:
   - **Textual Analysis**: Uses the [Llama3.2 3B](https://nexaai.com/meta/Llama3.2-3B-Instruct/gguf-q3_K_M/file) to analyze and summarize text-based content, generating relevant descriptions and filenames.
   - **Visual Content Analysis**: Uses the [LLaVA-v1.6](https://nexaai.com/liuhaotian/llava-v1.6-vicuna-7b/gguf-q4_0/file) , based on Vicuna-7B, to interpret visual files such as images, providing context-aware categorization and descriptions.
 
@@ -159,7 +159,7 @@ CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --
 For detailed installation instructions of Nexa SDK for **CUDA** and **AMD GPU** support, please refer to the [Installation section](https://github.com/NexaAI/nexa-sdk?tab=readme-ov-file#installation) in the main README.
 
 
-### 5. Install Dependencies 
+### 5. Install Dependencies
 
 1. Ensure you are in the project directory:
    ```zsh
@@ -184,6 +184,53 @@ With the environment activated and dependencies installed, run the script using:
 ```zsh
 python main.py
 ```
+
+# Docker Installation 🐳
+
+You can easily set up the project in a containerized environment using the provided `Dockerfile` and `docker-compose.yml`. This allows you to avoid manual dependencies and complicated setups, while keeping everything isolated in Docker containers.
+
+## Steps to Install and Run the Project in Docker
+
+Follow the instructions below to get started.
+
+---
+
+### 1. Clone the Repository
+
+First, clone the repository and navigate into the project's directory:
+
+```bash
+git clone https://github.com/QiuYannnn/Local-File-Organizer.git
+cd Local-File-Organizer
+```
+
+### 2. Build the Docker Image
+
+Use the following command to build the Docker image and start the container. The `docker-compose` file automatically handles the build process:
+
+```bash
+docker-compose up --build
+```
+
+This step will:
+
+- Automatically download, install, and configure all required dependencies.
+- Take care of CUDA runtime libraries, Nvidia drivers, `nvidia-smi`, and other GPU-related setups if necessary.
+
+You don't need to install any of these dependencies manually—Docker will handle everything during the image build process.
+
+> 💡 **Note:** Optionally, to avoid re-downloading pre-trained models, you can mount your local `.cache` directory to the Docker container’s `.cache` directory. This will save time if you already have certain models downloaded:
+>
+> Example of how to mount the folder:
+>
+> ```yaml
+> volumes:
+>   - /path/to/your/.cache:/root/.cache
+> ```
+
+### That's it! 🎉
+
+You’re now ready to  run and develop the project inside a fully containerized environment. No worries about manually installing dependencies or compatibility issues across systems.
 
 ## Notes
 

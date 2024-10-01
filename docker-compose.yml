@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  local_file_organizer_service:
+    image: local_file_organizer_image
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: local_file_organizer_container
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]
+    runtime: nvidia # Explicitly specify the NVIDIA runtime
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all # Make sure all GPUs are visible
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility # Specify required driver capabilities
+      - DEBIAN_FRONTEND=noninteractive
+    volumes:
+      - C:\Users\kunal\.cache:/root/.cache #  path for model files mounting
+    command: python3 main.py
+    restart: unless-stopped
