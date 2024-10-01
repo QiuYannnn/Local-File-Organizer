@@ -43,7 +43,7 @@ def initialize_models():
     if image_inference is None or text_inference is None:
         # Initialize the models
         model_path = "llava-v1.6-vicuna-7b:q4_0"
-        model_path_text = "Llama3.2-1B-Instruct:q4_K_M"
+        model_path_text = "Llama3.2-3B-Instruct:q3_K_M"
 
         # Use the filter_specific_output context manager
         with filter_specific_output():
@@ -57,6 +57,7 @@ def initialize_models():
                 top_k=3,
                 top_p=0.2,
                 profiling=False
+                # add n_ctx if out of context window usage: n_ctx=2048
             )
 
             # Initialize the text inference model
@@ -69,6 +70,8 @@ def initialize_models():
                 top_k=3,
                 top_p=0.3,
                 profiling=False
+                # add n_ctx if out of context window usage: n_ctx=2048
+
             )
         print("**----------------------------------------------**")
         print("**       Image inference model initialized      **")
@@ -140,7 +143,7 @@ def main():
 
     # Display silent mode explanation before asking
     print("-" * 50)
-    print("**NOTE: Silent mode suppresses output messages and logs them to a file instead.")
+    print("**NOTE: Silent mode logs all outputs to a text file instead of displaying them in the terminal.")
     silent_mode = get_yes_no("Would you like to enable silent mode? (yes/no): ")
     if silent_mode:
         log_file = 'operation_log.txt'
@@ -321,18 +324,14 @@ def main():
                 if another_sort:
                     continue  # Loop back to mode selection
                 else:
-                    # Ask if the user wants to process a new directory
-                    new_directory = get_yes_no("Would you like to organize a new directory? (yes/no): ")
-                    if new_directory:
-                        break  # Break to outer loop to enter new paths
-                    else:
-                        print("Operation canceled by the user.")
-                        return  # Exit the program
+                    print("Operation canceled by the user.")
+                    break  # Exit the sorting method loop
 
         # Ask if the user wants to organize another directory
         another_directory = get_yes_no("Would you like to organize another directory? (yes/no): ")
         if not another_directory:
             break  # Exit the main loop
+
 
 if __name__ == '__main__':
     main()

@@ -3,7 +3,6 @@ import os
 import time
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
-from nltk.probability import FreqDist
 from nltk.stem import WordNetLemmatizer
 from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
 from data_processing_common import sanitize_filename  # Import sanitize_filename
@@ -75,9 +74,8 @@ def generate_image_metadata(image_path, progress, task_id, image_inference, text
 
     # Step 2: Generate filename using text_inference
     filename_prompt = f"""Based on the description below, generate a specific and descriptive filename for the image.
-Limit the filename to a maximum of 3 words. Do not include any data type words like 'image', 'jpg', 'png', etc.
-Use only letters and connect words with underscores.
-Avoid using any special characters, symbols, markdown, or code formatting.
+Limit the filename to a maximum of 3 words. Use nouns and avoid starting with verbs like 'depicts', 'shows', 'presents', etc.
+Do not include any data type words like 'image', 'jpg', 'png', etc. Use only letters and connect words with underscores.
 
 Description: {description}
 
@@ -98,8 +96,8 @@ Filename:"""
 
     # Step 3: Generate folder name from description using text_inference
     foldername_prompt = f"""Based on the description below, generate a general category or theme that best represents the main subject of this image.
-This will be used as the folder name. Limit the category to a maximum of 2 words.
-Do not include specific details, words from the filename, any generic terms like 'untitled' or 'unknown', or any special characters, symbols, numbers, markdown, or code formatting.
+This will be used as the folder name. Limit the category to a maximum of 2 words. Use nouns and avoid verbs.
+Do not include specific details, words from the filename, or any generic terms like 'untitled' or 'unknown'.
 
 Description: {description}
 
@@ -130,7 +128,8 @@ Category:"""
         'folder', 'category', 'output', 'only', 'below', 'text', 'jpg', 'png', 'jpeg', 'gif', 'bmp', 'svg',
         'logo', 'in', 'on', 'of', 'with', 'by', 'for', 'to', 'from', 'a', 'an', 'as', 'at', 'red', 'blue',
         'green', 'color', 'colors', 'colored', 'text', 'graphic', 'graphics', 'main', 'subject', 'important',
-        'details', 'description'
+        'details', 'description', 'depicts', 'show', 'shows', 'display', 'illustrates', 'presents', 'features',
+        'provides', 'covers', 'includes', 'demonstrates', 'describes'
     ])
     stop_words = set(stopwords.words('english'))
     all_unwanted_words = unwanted_words.union(stop_words)

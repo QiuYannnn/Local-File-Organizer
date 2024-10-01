@@ -73,7 +73,8 @@ def generate_text_metadata(input_text, file_path, progress, task_id, text_infere
 
     # Step 2: Generate filename
     filename_prompt =  f"""Based on the summary below, generate a specific and descriptive filename that captures the essence of the document.
-Limit the filename to a maximum of 3 words. Do not include any data type words like 'text', 'document', 'pdf', etc. Use only letters and connect words with underscores. Avoid generic terms like 'describes'.
+Limit the filename to a maximum of 3 words. Use nouns and avoid starting with verbs like 'depicts', 'shows', 'presents', etc.
+Do not include any data type words like 'text', 'document', 'pdf', etc. Use only letters and connect words with underscores.
 
 Summary: {description}
 
@@ -97,7 +98,8 @@ Filename:"""
 
     # Step 3: Generate folder name from summary
     foldername_prompt = f"""Based on the summary below, generate a general category or theme that best represents the main subject of this document.
-This will be used as the folder name. Limit the category to a maximum of 2 words. Do not include specific details, words from the filename, or any generic terms like 'untitled' or 'unknown'.
+This will be used as the folder name. Limit the category to a maximum of 2 words. Use nouns and avoid verbs.
+Do not include specific details, words from the filename, or any generic terms like 'untitled' or 'unknown'.
 
 Summary: {description}
 
@@ -126,7 +128,8 @@ Category:"""
         'to', 'from', 'a', 'an', 'as', 'at', 'i', 'we', 'you', 'they', 'he', 'she', 'it', 'that', 'which', 'are', 'were', 'was', 'be',
         'have', 'has', 'had', 'do', 'does', 'did', 'but', 'if', 'or', 'because', 'about', 'into', 'through', 'during', 'before', 'after',
         'above', 'below', 'any', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so',
-        'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', 'should', 'now', 'new'
+        'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', 'should', 'now', 'new', 'depicts', 'show', 'shows', 'display',
+        'illustrates', 'presents', 'features', 'provides', 'covers', 'includes', 'discusses', 'demonstrates', 'describes'
     ])
     stop_words = set(stopwords.words('english'))
     all_unwanted_words = unwanted_words.union(stop_words)
