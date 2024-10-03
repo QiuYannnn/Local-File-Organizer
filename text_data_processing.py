@@ -46,6 +46,7 @@ def process_single_text_file(args, text_inference, silent=False, log_file=None):
                 f.write(message + '\n')
     else:
         print(message)
+    
     return {
         'file_path': file_path,
         'foldername': foldername,
@@ -54,11 +55,15 @@ def process_single_text_file(args, text_inference, silent=False, log_file=None):
     }
 
 def process_text_files(text_tuples, text_inference, silent=False, log_file=None):
-    """Process text files sequentially."""
+    """Process text files sequentially, generating metadata for each file."""
     results = []
+
+    # Loop over each file (text_tuples is assumed to be a list of (file_path, text) tuples)
     for args in text_tuples:
+        # Process a single text file
         data = process_single_text_file(args, text_inference, silent=silent, log_file=log_file)
         results.append(data)
+
     return results
 
 def generate_text_metadata(input_text, file_path, progress, task_id, text_inference):
