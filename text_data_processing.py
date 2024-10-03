@@ -9,44 +9,18 @@ from nltk.stem import WordNetLemmatizer
 from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
 from data_processing_common import sanitize_filename
 
-def split_text_into_chunks(text, max_chunk_size=1500):
-    """Split text into smaller chunks to fit within the model's token limit."""
-    sentences = sent_tokenize(text)
-    chunk = ""
-    chunks = []
-    
-    for sentence in sentences:
-        if len(word_tokenize(chunk + sentence)) > max_chunk_size:
-            chunks.append(chunk)
-            chunk = sentence
-        else:
-            chunk += " " + sentence
-    
-    if chunk:
-        chunks.append(chunk)
-    
-    return chunks
-
 def summarize_text_content(text, text_inference):
-    """Summarize the given text content in chunks."""
-    chunks = split_text_into_chunks(text)
-    summaries = []
-    
-    for chunk in chunks:
-        prompt = f"""Provide a concise and accurate summary of the following text, focusing on the main ideas and key details.
+    """Summarize the given text content."""
+    prompt = f"""Provide a concise and accurate summary of the following text, focusing on the main ideas and key details.
 Limit your summary to a maximum of 150 words.
 
-Text: {chunk}
+Text: {text}
 
 Summary:"""
-        
-        response = text_inference.create_completion(prompt)
-        summary = response['choices'][0]['text'].strip()
-        summaries.append(summary)
-    
-    # Combine all chunk summaries
-    full_summary = " ".join(summaries)
-    return full_summary
+
+    response = text_inference.create_completion(prompt)
+    summary = response['choices'][0]['text'].strip()
+    return summary
 
 def process_single_text_file(args, text_inference, silent=False, log_file=None):
     """Process a single text file to generate metadata."""
@@ -72,12 +46,25 @@ def process_single_text_file(args, text_inference, silent=False, log_file=None):
                 f.write(message + '\n')
     else:
         print(message)
+    
     return {
         'file_path': file_path,
         'foldername': foldername,
         'filename': filename,
         'description': description
     }
+
+def process_text_files(text_tuples, text_inference, silent=False, log_file=None):
+    """Process text files sequentially, generating metadata for each file."""
+    results = []
+
+    # Loop over each file (text_tuples is assumed to be a list of (file_path, text) tuples)
+    for args in text_tuples:
+        # Process a single text file
+        data = process_single_text_file(args, text_inference, silent=silent, log_file=log_file)
+        results.append(data)
+
+    return results
 
 def generate_text_metadata(input_text, file_path, progress, task_id, text_inference):
     """Generate description, folder name, and filename for a text document."""
@@ -197,4 +184,3 @@ Category:"""
     sanitized_foldername = sanitize_filename(foldername, max_words=2)
 
     return sanitized_foldername, sanitized_filename, description
-
