@@ -9,6 +9,7 @@ from nltk.stem import WordNetLemmatizer
 from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
 from data_processing_common import sanitize_filename
 
+# Function to summarize text content
 def summarize_text_content(text, text_inference):
     """Summarize the given text content."""
     prompt = f"""Provide a concise and accurate summary of the following text, focusing on the main ideas and key details.
@@ -22,6 +23,7 @@ Summary:"""
     summary = response['choices'][0]['text'].strip()
     return summary
 
+# Function to process a single text file
 def process_single_text_file(args, text_inference, silent=False, log_file=None):
     """Process a single text file to generate metadata."""
     file_path, text = args
@@ -54,22 +56,25 @@ def process_single_text_file(args, text_inference, silent=False, log_file=None):
         'description': description
     }
 
+# Function to process multiple text files
 def process_text_files(text_tuples, text_inference, silent=False, log_file=None):
     """Process text files sequentially, generating metadata for each file."""
     results = []
 
-    # Loop over each file (text_tuples is assumed to be a list of (file_path, text) tuples)
     for args in text_tuples:
-        # Process a single text file
-        data = process_single_text_file(args, text_inference, silent=silent, log_file=log_file)
-        results.append(data)
+        try:
+            data = process_single_text_file(args, text_inference, silent=silent, log_file=log_file)
+            if data:
+                results.append(data)
+        except Exception as e:
+            print(f"Error processing file {args[0]}: {str(e)}")
+            continue  # Skip to the next file on error
 
     return results
 
+# Function to generate text metadata
 def generate_text_metadata(input_text, file_path, progress, task_id, text_inference):
     """Generate description, folder name, and filename for a text document."""
-
-    # Total steps in processing a text file
     total_steps = 3
 
     # Step 1: Generate description
@@ -97,11 +102,10 @@ Output only the filename, without any additional text.
 Filename:"""
     filename_response = text_inference.create_completion(filename_prompt)
     filename = filename_response['choices'][0]['text'].strip()
-    # Remove 'Filename:' prefix if present
     filename = re.sub(r'^Filename:\s*', '', filename, flags=re.IGNORECASE).strip()
     progress.update(task_id, advance=1 / total_steps)
 
-    # Step 3: Generate folder name from summary
+    # Step 3: Generate folder name
     foldername_prompt = f"""Based on the summary below, generate a general category or theme that best represents the main subject of this document.
 This will be used as the folder name. Limit the category to a maximum of 2 words. Use nouns and avoid verbs.
 Do not include specific details, words from the filename, or any generic terms like 'untitled' or 'unknown'.
@@ -122,7 +126,6 @@ Output only the category, without any additional text.
 Category:"""
     foldername_response = text_inference.create_completion(foldername_prompt)
     foldername = foldername_response['choices'][0]['text'].strip()
-    # Remove 'Category:' prefix if present
     foldername = re.sub(r'^Category:\s*', '', foldername, flags=re.IGNORECASE).strip()
     progress.update(task_id, advance=1 / total_steps)
 
@@ -142,41 +145,34 @@ Category:"""
 
     # Function to clean and process the AI output
     def clean_ai_output(text, max_words):
-        # Remove special characters and numbers
         text = re.sub(r'[^\w\s]', ' ', text)
         text = re.sub(r'\d+', '', text)
         text = text.strip()
-        # Split concatenated words (e.g., 'mathOperations' -> 'math Operations')
         text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
-        # Tokenize and lemmatize words
         words = word_tokenize(text)
         words = [word.lower() for word in words if word.isalpha()]
         words = [lemmatizer.lemmatize(word) for word in words]
-        # Remove unwanted words and duplicates
         filtered_words = []
         seen = set()
         for word in words:
             if word not in all_unwanted_words and word not in seen:
                 filtered_words.append(word)
                 seen.add(word)
-        # Limit to max words
         filtered_words = filtered_words[:max_words]
         return '_'.join(filtered_words)
 
     # Process filename
     filename = clean_ai_output(filename, max_words=3)
     if not filename or filename.lower() in ('untitled', ''):
-        # Use keywords from the description
         filename = clean_ai_output(description, max_words=3)
     if not filename:
         filename = 'document_' + os.path.splitext(os.path.basename(file_path))[0]
 
     sanitized_filename = sanitize_filename(filename, max_words=3)
 
-    # Process foldername
+    # Process folder name
     foldername = clean_ai_output(foldername, max_words=2)
     if not foldername or foldername.lower() in ('untitled', ''):
-        # Attempt to extract keywords from the description
         foldername = clean_ai_output(description, max_words=2)
         if not foldername:
             foldername = 'documents'
@@ -184,3 +180,17 @@ Category:"""
     sanitized_foldername = sanitize_filename(foldername, max_words=2)
 
     return sanitized_foldername, sanitized_filename, description
+
+# Main function to run the program
+def main():
+    # Replace the following variables with actual inputs for your program
+    text_tuples = [('path_to_file_1', 'file_text_1'), ('path_to_file_2', 'file_text_2')]  # Sample list of files and their texts
+    text_inference = None  # Replace this with your inference object
+    silent_mode = False  # Set to True if you don't want verbose output
+    log_file = None  # Specify a log file if needed
+
+    results = process_text_files(text_tuples, text_inference, silent=silent_mode, log_file=log_file)
+    print(results)
+
+if __name__ == "__main__":
+    main()
