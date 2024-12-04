@@ -32,6 +32,7 @@ def ensure_nltk_data():
     nltk.download('stopwords', quiet=True)
     nltk.download('punkt', quiet=True)
     nltk.download('wordnet', quiet=True)
+    nltk.download('punkt_tab', quiet=True)
 
 # Initialize models
 image_inference = None
