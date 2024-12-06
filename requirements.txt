@@ -8,3 +8,5 @@ xlrd
 nltk
 rich
 python-pptx
+matplotlib
+nexa
