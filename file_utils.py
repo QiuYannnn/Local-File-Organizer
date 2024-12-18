@@ -99,6 +99,7 @@ def display_directory_tree(path):
             if os.path.isdir(full_path):
                 extension = '│   ' if pointer == '├── ' else '    '
                 tree(full_path, prefix + extension)
+
     if os.path.isdir(path):
         print(os.path.abspath(path))
         tree(path)
@@ -125,5 +126,25 @@ def separate_files_by_type(file_paths):
     text_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in text_extensions]
 
     return image_files, text_files  # Return only two values
+
+def display_file_size_summary(directory):
+    """Display the total number and size of files in a directory."""
+    total_size = 0
+    num_files = 0
+
+    for root, _, files in os.walk(directory):
+        for file in files:
+            file_path = os.path.join(root, file)
+            if os.path.isfile(file_path):
+                size = os.path.getsize(file_path)
+                total_size += size
+                num_files += 1
+
+    print(f"Total number of files: {num_files}")
+    print(f"Total size of files: {total_size / (1024 * 1024):.2f} MB")
+
+# Call the size summary feature to demonstrate
+directory_path = '.'  # Current directory
+display_file_size_summary(directory_path)
 
 # TODO:ebook: '.mobi', '.azw', '.azw3', '.epub',
