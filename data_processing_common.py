@@ -198,7 +198,7 @@ def execute_operations(operations, dry_run=False, silent=False, log_file=None):
             # Silent mode handling
             if silent:
                 if log_file:
-                    with open(log_file, 'a') as f:
+                    with open(log_file, 'a', encoding="utf-8") as f:
                         f.write(message + '\n')
             else:
                 print(message)
