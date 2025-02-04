@@ -41,7 +41,7 @@ def process_single_image(image_path, image_inference, text_inference, silent=Fal
     message = f"File: {image_path}\nTime taken: {time_taken:.2f} seconds\nDescription: {description}\nFolder name: {foldername}\nGenerated filename: {filename}\n"
     if silent:
         if log_file:
-            with open(log_file, 'a') as f:
+            with open(log_file, 'a', encoding='utf-8') as f:
                 f.write(message + '\n')
     else:
         print(message)
@@ -145,7 +145,13 @@ Category:"""
         # Split concatenated words (e.g., 'GoogleChrome' -> 'Google Chrome')
         text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
         # Tokenize and lemmatize words
-        words = word_tokenize(text)
+        try:
+            words = word_tokenize(text)
+        except LookupError:
+            print(f"Error tokenizing text: {text}")
+            import nltk
+            nltk.download()    
+            words = word_tokenize(text)        
         words = [word.lower() for word in words if word.isalpha()]
         words = [lemmatizer.lemmatize(word) for word in words]
         # Remove unwanted words and duplicates
